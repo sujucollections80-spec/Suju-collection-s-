@@ -1,140 +1,279 @@
-const PRODUCTS_KEY="sujuProducts";
-const PASSWORD_KEY="sujuAdminPassword";
-const DEFAULT_PASSWORD="suju1234";
+const PASSWORD = "suju1234";
+const COLLECTION = "Products";
 
-function getProducts(){
-  try{
-    const x=localStorage.getItem(PRODUCTS_KEY);
-    const p=x?JSON.parse(x):[];
-    return Array.isArray(p)?p:[];
-  }catch(e){return[];}
+let db = null;
+
+function loadFirebase(){
+  return new Promise((resolve, reject) => {
+    if(window.firebase && window.firebase.firestore){
+      db = firebase.firestore();
+      resolve();
+      return;
+    }
+
+    const app = document.createElement("script");
+    app.src = "https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js";
+
+    app.onload = () => {
+      const fs = document.createElement("script");
+      fs.src = "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js";
+
+      fs.onload = () => {
+        firebase.initializeApp({
+          apiKey: "AIzaSyBZnk_XV4BwWHHbMoxANQuDsxRbkJP1Ehs",
+          authDomain: "suju-collection-s.firebaseapp.com",
+          projectId: "suju-collection-s",
+          storageBucket: "suju-collection-s.firebasestorage.app",
+          messagingSenderId: "2779373511",
+          appId: "1:2779373511:web:9d484186d9e8ea398cc3e2"
+        });
+
+        db = firebase.firestore();
+        resolve();
+      };
+
+      fs.onerror = reject;
+      document.head.appendChild(fs);
+    };
+
+    app.onerror = reject;
+    document.head.appendChild(app);
+  });
 }
 
-function saveProducts(p){
-  localStorage.setItem(PRODUCTS_KEY,JSON.stringify(p));
-}
+async function loginAdmin(){
+  const password = document.getElementById("adminPassword").value;
 
-function loginAdmin(){
-  const password=document.getElementById("adminPassword").value;
-  const saved=localStorage.getItem(PASSWORD_KEY)||DEFAULT_PASSWORD;
-
-  if(password!==saved){
-    alert("Password తప్పు.");
+  if(password !== PASSWORD){
+    alert("Password తప్పు");
     return;
   }
 
-  document.getElementById("loginBox").hidden=true;
-  document.getElementById("adminPanel").hidden=false;
-  renderAdminProducts();
+  document.getElementById("loginBox").hidden = true;
+  document.getElementById("adminPanel").hidden = false;
+
+  try{
+    await loadFirebase();
+    await renderAdminProducts();
+  }catch(e){
+    console.error(e);
+    alert("Firebase connection problem");
+  }
 }
 
 function logoutAdmin(){
-  document.getElementById("adminPanel").hidden=true;
-  document.getElementById("loginBox").hidden=false;
+  document.getElementById("adminPanel").hidden = true;
+  document.getElementById("loginBox").hidden = false;
+  document.getElementById("adminPassword").value = "";
 }
 
 function makeId(){
-  return Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+  return Date.now().toString(36) + Math.random().toString(36).slice(2);
 }
 
-function saveProduct(){
-  const name=document.getElementById("pName").value.trim();
-  const price=Number(document.getElementById("pPrice").value);
-  const stock=Number(document.getElementById("pStock").value);
-  const category=document.getElementById("pCategory").value.trim();
-  const description=document.getElementById("pDesc").value.trim();
-  const input=document.getElementById("pImage");
-  const editId=document.getElementById("editId").value;
+function compressImage(file){
+  return new Promise((resolve,reject)=>{
+    if(!file){
+      resolve("");
+      return;
+    }
 
-  if(!name||!Number.isFinite(price)||!Number.isFinite(stock)){
-    alert("Product name, price, stock పెట్టండి.");
-    return;
-  }
+    const reader = new FileReader();
 
-  const products=getProducts();
-  const old=products.find(p=>String(p.id)===String(editId));
+    reader.onload = e => {
+      const img = new Image();
 
-  const finish=(image)=>{
-    const product={
-      id:editId||makeId(),
+      img.onload = () => {
+        const max = 700;
+        let w = img.width;
+        let h = img.height;
+
+        if(w > h && w > max){
+          h = Math.round(h * max / w);
+          w = max;
+        }else if(h > max){
+          w = Math.round(w * max / h);
+          h = max;
+        }
+
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img,0,0,w,h);
+
+        resolve(canvas.toDataURL("image/jpeg",0.75));
+      };
+
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function saveProduct(){
+
+  try{
+    if(!db) await loadFirebase();
+
+    const name = document.getElementById("pName").value.trim();
+    const price = Number(document.getElementById("pPrice").value);
+    const stock = Number(document.getElementById("pStock").value);
+    const category = document.getElementById("pCategory").value.trim();
+    const description = document.getElementById("pDesc").value.trim();
+
+    const input = document.getElementById("pImage");
+    const file = input.files && input.files[0];
+
+    if(!name || !Number.isFinite(price) || !Number.isFinite(stock)){
+      alert("Product name, price, stock తప్పనిసరి");
+      return;
+    }
+
+    let image = "";
+
+    if(file){
+      image = await compressImage(file);
+    }
+
+    const product = {
       name,
       price,
       stock,
       category,
       description,
-      image:image||(old?old.image||"":"")
+      image,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
 
-    const i=products.findIndex(p=>String(p.id)===String(editId));
+    const editId = document.getElementById("editId").value;
 
-    if(i>=0) products[i]=product;
-    else products.push(product);
+    if(editId){
+      await db.collection(COLLECTION).doc(editId).set(product,{merge:true});
+      alert("Product updated");
+    }else{
+      product.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+      await db.collection(COLLECTION).add(product);
+      alert("Product added");
+    }
 
-    saveProducts(products);
     clearForm();
-    renderAdminProducts();
-    alert(editId?"Product updated.":"Product added.");
-  };
+    await renderAdminProducts();
 
-  if(input.files&&input.files[0]){
-    const reader=new FileReader();
-    reader.onload=()=>finish(reader.result);
-    reader.readAsDataURL(input.files[0]);
-  }else{
-    finish("");
+  }catch(e){
+    console.error(e);
+    alert("Product save కాలేదు: " + e.message);
   }
 }
 
 function clearForm(){
-  document.getElementById("editId").value="";
-  document.getElementById("pName").value="";
-  document.getElementById("pPrice").value="";
-  document.getElementById("pStock").value="";
-  document.getElementById("pCategory").value="";
-  document.getElementById("pDesc").value="";
-  document.getElementById("pImage").value="";
+  document.getElementById("editId").value = "";
+  document.getElementById("pName").value = "";
+  document.getElementById("pPrice").value = "";
+  document.getElementById("pStock").value = "";
+  document.getElementById("pCategory").value = "";
+  document.getElementById("pDesc").value = "";
+  document.getElementById("pImage").value = "";
 }
 
-function deleteProduct(id){
-  if(!confirm("ఈ product delete చేయాలా?"))return;
-  saveProducts(getProducts().filter(p=>String(p.id)!==String(id)));
-  renderAdminProducts();
-}
+async function deleteProduct(id){
 
-function editProduct(id){
-  const p=getProducts().find(x=>String(x.id)===String(id));
-  if(!p)return;
+  if(!confirm("Product delete చేయాలా?")) return;
 
-  document.getElementById("editId").value=p.id;
-  document.getElementById("pName").value=p.name||"";
-  document.getElementById("pPrice").value=p.price||"";
-  document.getElementById("pStock").value=p.stock||"";
-  document.getElementById("pCategory").value=p.category||"";
-  document.getElementById("pDesc").value=p.description||"";
-}
+  try{
+    if(!db) await loadFirebase();
 
-function renderAdminProducts(){
-  const box=document.getElementById("adminProducts");
-  if(!box)return;
+    await db.collection(COLLECTION).doc(id).delete();
 
-  const products=getProducts();
+    await renderAdminProducts();
 
-  if(!products.length){
-    box.innerHTML="<p>ఇంకా products add చేయలేదు.</p>";
-    return;
+    alert("Product deleted");
+  }catch(e){
+    console.error(e);
+    alert("Delete కాలేదు");
   }
+}
 
-  box.innerHTML=products.map(p=>`
-    <div style="padding:12px;border-bottom:1px solid #ddd">
-      <b>${p.name}</b><br>
-      ₹${p.price} | Stock: ${p.stock}<br>
-      <button onclick="editProduct('${p.id}')">Edit</button>
-      <button onclick="deleteProduct('${p.id}')">Delete</button>
-    </div>
-  `).join("");
+async function editProduct(id){
+
+  try{
+    if(!db) await loadFirebase();
+
+    const doc = await db.collection(COLLECTION).doc(id).get();
+
+    if(!doc.exists) return;
+
+    const p = doc.data();
+
+    document.getElementById("editId").value = id;
+    document.getElementById("pName").value = p.name || "";
+    document.getElementById("pPrice").value = p.price || "";
+    document.getElementById("pStock").value = p.stock || "";
+    document.getElementById("pCategory").value = p.category || "";
+    document.getElementById("pDesc").value = p.description || "";
+
+    window.scrollTo({top:0,behavior:"smooth"});
+
+  }catch(e){
+    console.error(e);
+    alert("Product open కాలేదు");
+  }
+}
+
+async function renderAdminProducts(){
+
+  const box = document.getElementById("adminProducts");
+
+  if(!box) return;
+
+  try{
+    if(!db) await loadFirebase();
+
+    const snap = await db.collection(COLLECTION).orderBy("createdAt","desc").get();
+
+    if(snap.empty){
+      box.innerHTML = "<p>No products added.</p>";
+      return;
+    }
+
+    box.innerHTML = snap.docs.map(doc => {
+
+      const p = doc.data();
+
+      return `
+        <div style="padding:12px;border-bottom:1px solid #ddd">
+          ${p.image ? `<img src="${p.image}" style="width:80px;height:80px;object-fit:cover;border-radius:8px"><br>` : ""}
+          <b>${escapeHtml(p.name || "")}</b><br>
+          ₹${p.price || 0} | Stock: ${p.stock || 0}<br>
+          ${escapeHtml(p.category || "")}<br>
+          <button onclick="editProduct('${doc.id}')">Edit</button>
+          <button onclick="deleteProduct('${doc.id}')">Delete</button>
+        </div>
+      `;
+
+    }).join("");
+
+  }catch(e){
+    console.error(e);
+    box.innerHTML = "<p>Products load కాలేదు.</p>";
+  }
+}
+
+function escapeHtml(value){
+  return String(value || "").replace(/[&<>"']/g,m=>({
+    "&":"&amp;",
+    "<":"&lt;",
+    ">":"&gt;",
+    '"':"&quot;",
+    "'":"&#39;"
+  }[m]));
 }
 
 document.addEventListener("DOMContentLoaded",()=>{
-  const panel=document.getElementById("adminPanel");
-  if(panel)panel.hidden=true;
+  const panel = document.getElementById("adminPanel");
+  if(panel) panel.hidden = true;
 });
