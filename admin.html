@@ -90,5 +90,23 @@ const firebaseConfig = {
   measurementId: "G-Y6BDXQZ9YT"
 };
 
-</body>
+<script>
+function loginAdmin(){
+  const password = document.getElementById("adminPassword").value;
+
+  if(password === "suju1234"){
+    document.getElementById("loginBox").hidden = true;
+    document.getElementById("adminPanel").hidden = false;
+    alert("Login successful!");
+  }else{
+    alert("Password తప్పు");
+  }
+}
+
+function logoutAdmin(){
+  document.getElementById("adminPanel").hidden = true;
+  document.getElementById("loginBox").hidden = false;
+  document.getElementById("adminPassword").value = "";
+}
+</script>body>
 </html>
