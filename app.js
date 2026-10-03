@@ -283,22 +283,24 @@ function sendOrder() {
   const loc = document.getElementById("custLocation")?.value || "";
   const pay = document.getElementById("paymentMethod")?.value || "COD";
 
+  
+
   let total = 0;
 
-  const lines = cart.map(x => {
-    const p = products.find(y => String(y.id) === String(x.id));
-    if (!p) return "";
+const lines = cart.map(x => {
+  const p = products.find(y => String(y.id) === String(x.id));
+  if (!p) return "";
 
-    const price = Number(p.price || 0);
-    const qty = Number(x.qty || 0);
-    const image = p.image || p.image_url || "";
+  const price = Number(p.price || 0);
+  const qty = Number(x.qty || 0);
+  const image = p.image || p.image_url || "";
 
-    total += price * qty;
+  total += price * qty;
 
-    return `${p.name} × ${qty} = ₹${price * qty}\nPhoto: ${image}`;
-  }).filter(Boolean).join("\n\n");
+  return `${p.name} × ${qty} = ₹${price * qty}\nPhoto: ${image}`;
+}).filter(Boolean).join("\n\n");
 
-  const msg = `🛍️ *Suju Collections Order*
+const msg = `🛍️ *Suju Collections Order*
 
 ${lines}
 
@@ -311,14 +313,16 @@ Address: ${addr}
 Location: ${loc || "Not shared"}
 
 Please confirm my order.`;
-  
 
-  window.open(
-    `https://wa.me/${WA}?text=${encodeURIComponent(msg)}`,
-    "_blank"
-  );
+window.open(
+  `https://wa.me/${WA}?text=${encodeURIComponent(msg)}`,
+  "_blank"
+);
 }
 
+async function startShop() {
+  renderProducts();
+  updateCount();
 
   try {
     await loadProducts();
@@ -326,5 +330,8 @@ Please confirm my order.`;
     console.error(e);
   }
 }
+
+document.addEventListener("DOMContentLoaded", startShop);
+
 
 document.addEventListener("DOMContentLoaded", startShop);
