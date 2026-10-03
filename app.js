@@ -297,7 +297,8 @@ const lines = cart.map(x => {
 
   total += price * qty;
 
-  return `${p.name} × ${qty} = ₹${price * qty}\nPhoto: ${image}`;
+  
+  return `${p.name} × ${qty} = ₹${price * qty}`;
 }).filter(Boolean).join("\n\n");
 
 const msg = `🛍️ *Suju Collections Order*
