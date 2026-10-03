@@ -299,25 +299,18 @@ function sendOrder() {
   }
 
   let total = 0;
+const lines = cart.map(x => {
+  const p = products.find(y => String(y.id) === String(x.id));
+  if (!p) return "";
 
-  const lines = cart.map(x => {
-    const p = products.find(y => String(y.id) === String(x.id));
+  const price = Number(p.price || 0);
+  const qty = Number(x.qty || 0);
+  const image = p.image || p.image_url || "";
 
-    if (!p) return "";
+  total += price * qty;
 
-    const price = Number(p.price || 0);
-    const qty = Number(x.qty || 0);
-
-    total += price * qty;
-
-    return `• ${p.name} × ${qty} = ₹${price * qty}`;
-  }).filter(Boolean).join("\n");
-
-  const msg =
-`🛍️ *Suju Collections Order*
-
-${lines}
-
+  return `${p.name} × ${qty} = ₹${price * qty}\nPhoto: ${image}`;
+}).filter(Boolean).join("\n\n");
 *Total: ₹${total}*
 Payment: ${pay}
 
