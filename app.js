@@ -283,11 +283,6 @@ function sendOrder() {
   const loc = document.getElementById("custLocation")?.value || "";
   const pay = document.getElementById("paymentMethod")?.value || "COD";
 
-  if (!name || !phone || !addr) {
-    alert("పేరు, ఫోన్ నంబర్, అడ్రస్ ఇవ్వండి.");
-    return;
-  }
-
   let total = 0;
 
   const lines = cart.map(x => {
@@ -316,6 +311,7 @@ Address: ${addr}
 Location: ${loc || "Not shared"}
 
 Please confirm my order.`;
+  
 
   window.open(
     `https://wa.me/${WA}?text=${encodeURIComponent(msg)}`,
