@@ -271,46 +271,42 @@ function getLocation() {
     }
   );
 }
-
 function sendOrder() {
   if (!cart.length) {
     alert("Cart ఖాళీగా ఉంది.");
     return;
   }
 
-  const name =
-    document.getElementById("custName")?.value.trim() || "";
-
-  const phone =
-    document.getElementById("custPhone")?.value.trim() || "";
-
-  const addr =
-    document.getElementById("custAddress")?.value.trim() || "";
-
-  const loc =
-    document.getElementById("custLocation")?.value || "";
-
-  const pay =
-    document.getElementById("paymentMethod")?.value || "COD";
+  const name = document.getElementById("custName")?.value.trim() || "";
+  const phone = document.getElementById("custPhone")?.value.trim() || "";
+  const addr = document.getElementById("custAddress")?.value.trim() || "";
+  const loc = document.getElementById("custLocation")?.value || "";
+  const pay = document.getElementById("paymentMethod")?.value || "COD";
 
   if (!name || !phone || !addr) {
-    alert("పేరు, ఫోన్ నంబర్, అడ్రస్ తప్పనిసరి.");
+    alert("పేరు, ఫోన్ నంబర్, అడ్రస్ ఇవ్వండి.");
     return;
   }
 
   let total = 0;
-const lines = cart.map(x => {
-  const p = products.find(y => String(y.id) === String(x.id));
-  if (!p) return "";
 
-  const price = Number(p.price || 0);
-  const qty = Number(x.qty || 0);
-  const image = p.image || p.image_url || "";
+  const lines = cart.map(x => {
+    const p = products.find(y => String(y.id) === String(x.id));
+    if (!p) return "";
 
-  total += price * qty;
+    const price = Number(p.price || 0);
+    const qty = Number(x.qty || 0);
+    const image = p.image || p.image_url || "";
 
-  return `${p.name} × ${qty} = ₹${price * qty}\nPhoto: ${image}`;
-}).filter(Boolean).join("\n\n");
+    total += price * qty;
+
+    return `${p.name} × ${qty} = ₹${price * qty}\nPhoto: ${image}`;
+  }).filter(Boolean).join("\n\n");
+
+  const msg = `🛍️ *Suju Collections Order*
+
+${lines}
+
 *Total: ₹${total}*
 Payment: ${pay}
 
@@ -327,9 +323,6 @@ Please confirm my order.`;
   );
 }
 
-async function startShop() {
-  renderProducts();
-  updateCount();
 
   try {
     await loadProducts();
